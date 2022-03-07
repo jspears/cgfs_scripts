@@ -1,0 +1,15 @@
+{
+  "name": "cgfs_scripts",
+  "version": "1.0.0",
+  "description": "Scripts for managing stuff for CGFS",
+  "main": "src/index.js",
+  "author": "Justin Spears<speajus@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "date-and-time": "^2.2.1",
+    "es-main": "^1.0.2",
+    "js-xlsx": "^0.8.22",
+    "xl-json": "^4.0.0",
+    "xlsx": "^0.18.2"
+  }
+}
