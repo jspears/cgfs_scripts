@@ -11,7 +11,7 @@ XLSX.set_fs(fs);
 
 const COLUMNS = 'Start_Date	Start_Time	End_Date	End_Time	Title	Description	Location	Location_URL	Location_Details	All_Day_Event	Event_Type	Tags	Team1_ID	Team1_Division_ID	Team1_Is_Home	Team2_ID	Team2_Division_ID	Team2_Name	Custom_Opponent	Event_ID	Game_ID	Affects_Standings	Points_Win	Points_Loss	Points_Tie	Points_OT_Win	Points_OT_Loss	Division_Override'.split('\t');
 
-const cleanLoc =v=>v?.toLowerCase().replace(/\([^)]*\)/, '').replaceAll(/Field|Park|Elementary/ig, '').replaceAll(/[-_,.#]+?|\s+?/g, ' ').replaceAll(/\s{2,}/g, ' ').trim();
+const cleanLoc = v => v?.toLowerCase().replace(/\([^)]*\)/, '').replaceAll(/Field|Park|Elementary/ig, '').replaceAll(/[-_,.#]+?|\s+?/g, ' ').replaceAll(/\s{2,}/g, ' ').trim();
 
 
 const isCgfs = v => /cgfs/i.test(v);
@@ -24,7 +24,7 @@ const fixTime = (time) => {
   return t + ' ' + (a.toUpperCase());
 };
 
-const isValidDate = d => d &&! isNaN(d.getTime());
+const isValidDate = d => d && !isNaN(d.getTime());
 
 const parseDate = (obj) => {
 
@@ -32,7 +32,7 @@ const parseDate = (obj) => {
   const newDate = date.parse(str, 'M/D/YYYY h:m A');
   if (!isValidDate(newDate)) {
     const newDate2 = date.parse(str, 'M/D/YYYY H:m A');
-    if (isValidDate(newDate2)){
+    if (isValidDate(newDate2)) {
       return newDate2;
     }
     throw new Error(`Invalid Date "${newDate}" "${str}"` + obj);
@@ -56,15 +56,15 @@ const parseFile = (file) => {
   const fields = fieldsArr.reduce((ret, v) => {
     ret[cleanLoc(v['Field Name'])] = v;
     v['Field Address'] = v['Field Address']?.replace(/\r\n/g, ',')?.trim();
-    if(v['Other Info']){
-       v['Field Name'] = `${v['Field Name']} (${v['Other Info']})`
+    if (v['Other Info']) {
+      v['Field Name'] = `${v['Field Name']} (${v['Other Info']})`;
     }
     return ret;
   }, {});
- 
- return schedules.reduce((ret, [sheet, age]) =>{
-   const resp = parseSchedule(sheet, age, fields);
-    ret.push(...resp); 
+
+  return schedules.reduce((ret, [sheet, age]) => {
+    const resp = parseSchedule(sheet, age, fields);
+    ret.push(...resp);
     return ret;
   }, []);
 };
@@ -75,7 +75,7 @@ const parseSchedule = (sheet, age, fields) => {
   aschedule.reduce((ret, obj) => {
     obj._age = age;
     if (obj.Time) {
-      if (!obj.Date){
+      if (!obj.Date) {
         obj.Date = ret;
       }
       try {
@@ -88,18 +88,18 @@ const parseSchedule = (sheet, age, fields) => {
   }, null);
 
 
-  const schedule = aschedule.filter(v => (v && v.DateTime && v['Home Team'] && v['Away Team']));
+  const schedule = aschedule.filter(v => (v && v['Home Team'] && v['Away Team']));
 
-  const findLocation = (location) =>  fields[cleanLoc(location)];
+  const findLocation = (location) => fields[cleanLoc(location)];
 
-  const resolveLocation = (location) =>{
-    const field =   findLocation(location);
-    if (!field){
+  const resolveLocation = (location) => {
+    const field = findLocation(location);
+    if (!field) {
       throw Error(`could not find field for ${JSON.stringify(location)} '${cleanLoc(location)}'`);
     }
-   return field;
+    return field;
 
-  }
+  };
 
   return schedule.map(v => {
 
@@ -127,7 +127,7 @@ const parseSchedule = (sheet, age, fields) => {
       ...(isCgfs(home) && isCgfs(away) ? {
         Team2_ID: `${age}${away}`
       } : {
-        Team2_ID:`${age}${away}`,
+        Team2_ID: `${age}${away}`,
         Team2_Name: away,
         Custom_Opponent: `TRUE`,
       })
