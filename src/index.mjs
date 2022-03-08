@@ -17,26 +17,39 @@ const cleanLoc = v => v?.toLowerCase().replace(/\([^)]*\)/, '').replaceAll(/Fiel
 const isCgfs = v => /cgfs/i.test(v);
 
 const fixTime = (time) => {
-  const [_, t, a = 'PM' ] = /(\d{1,2}\:\d{1,2})\s*(am|pm)?/i.exec(time) || [];
+  const [_, h, m, a ] = /(\d{1,2})\:(\d{1,2})\s*(am|pm)?/i.exec(time) || [];
   if (!_) {
     throw new Error(`unknown time "` + time + '" ' + _);
   }
-  return t +' '+a.toUpperCase();
+
+  return ( a && h < 12 && a.toUpperCase() == 'pm') ? (12 + h) : h + ':' + m;
 };
 
 const isValidDate = d => d && !isNaN(d.getTime());
 
-const parseDate = (obj) => {
+const parseDate = (obj, after=8, before = 20)=>{
+  const d = _parseDate(obj);
+  if (!d){
+    return d;
+  }
+  if (after && d.getHours() < after){
+    throw new Error(`Invalid time must be after ${after} ${d} ${d.getHours()}`);
+  }
+  if (before && d.getHours() > before){
+    throw new Error( `Invalid time must be before ${before} ${d} ${d.getHours()}`);
+  }
+
+  return d;
+}
+
+const _parseDate = (obj) => {
 
   const str = (obj.Date.split(' ')[0] + ' ' + fixTime(obj.Time)).trim() ;
-  const newDate = date.parse(str, 'M/D/YYYY h:m A');
+  const newDate = date.parse(str, 'M/D/YYYY H:mm');
   if (!isValidDate(newDate)) {
-    const newDate2 = date.parse(str, 'M/D/YYYY H:m A');
-    if (isValidDate(newDate2)) {
-      return newDate2;
-    }
     throw new Error(`Invalid Date "${newDate}" "${str}"` + obj);
   }
+  
   return newDate;
 
 };
@@ -56,10 +69,12 @@ const parseFile = (file) => {
   fieldsArr.reduce((ret, v) => v['Field Address'] ?? (v['Field Address'] = ret), '');
 
   const fields = fieldsArr.reduce((ret, v) => {
-    ret[cleanLoc(v['Field Name'])] = v;
+    const fName = v['Field Name'] ?? v['Field'];
+
+    ret[cleanLoc(fName)] = v;
     v['Field Address'] = v['Field Address']?.replace(/\r\n/g, ',')?.trim();
     if (v['Other Info']) {
-      v['Field Name'] = `${v['Field Name']} (${v['Other Info']})`;
+      v['Field Name'] = `${fName} (${v['Other Info']})`;
     }
     return ret;
   }, {});
@@ -80,11 +95,7 @@ const parseSchedule = (sheet, age, fields) => {
       if (!obj.Date) {
         obj.Date = ret;
       }
-      try {
         obj.DateTime = parseDate(obj);
-      } catch (e) {
-        console.warn(`could not parse `, e, obj);
-      }
     }
     return obj.Date || ret;
   }, null);
@@ -110,7 +121,7 @@ const parseSchedule = (sheet, age, fields) => {
     if (!isCgfs(away) && isAway) {
       return null;
     }
-
+    
     const end = new Date(v.DateTime.getTime() + 2 * 3600 * 1000);
     const loc = resolveLocation(v.Location || v['Field Name'] || v['Field']);
 
@@ -152,6 +163,7 @@ const toCSV = (objs) => objs.reduce((ret, o) => (ret + COLUMNS.map(v => quote(o[
 export function main(files) {
   console.warn(`processing ${files}`);
   console.log(files.reduce((ret, name) => `${ret}${toCSV(parseFile(name))}`, COLUMNS.join(',') + '\n'));
+ 
 }
 
 if (esMain(import.meta)) {
