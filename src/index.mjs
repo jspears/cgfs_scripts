@@ -17,18 +17,18 @@ const cleanLoc = v => v?.toLowerCase().replace(/\([^)]*\)/, '').replaceAll(/Fiel
 const isCgfs = v => /cgfs/i.test(v);
 
 const fixTime = (time) => {
-  const [_, t, a = 'PM'] = /(\d{1,2}\:\d{1,2})\s*(am|pm)?/i.exec(time) || [];
+  const [_, t, a = 'PM' ] = /(\d{1,2}\:\d{1,2})\s*(am|pm)?/i.exec(time) || [];
   if (!_) {
     throw new Error(`unknown time "` + time + '" ' + _);
   }
-  return t + ' ' + (a.toUpperCase());
+  return t +' '+a.toUpperCase();
 };
 
 const isValidDate = d => d && !isNaN(d.getTime());
 
 const parseDate = (obj) => {
 
-  const str = (obj.Date.split(' ')[0] + ' ' + fixTime(obj.Time)).trim();
+  const str = (obj.Date.split(' ')[0] + ' ' + fixTime(obj.Time)).trim() ;
   const newDate = date.parse(str, 'M/D/YYYY h:m A');
   if (!isValidDate(newDate)) {
     const newDate2 = date.parse(str, 'M/D/YYYY H:m A');
@@ -40,6 +40,8 @@ const parseDate = (obj) => {
   return newDate;
 
 };
+
+
 const parseAge = (str) => (/(\d{1,2})U/.exec(str) || [])[1];
 
 const parseFile = (file) => {
@@ -90,21 +92,19 @@ const parseSchedule = (sheet, age, fields) => {
 
   const schedule = aschedule.filter(v => (v && v['Home Team'] && v['Away Team']));
 
-  const findLocation = (location) => fields[cleanLoc(location)];
-
   const resolveLocation = (location) => {
-    const field = findLocation(location);
+    const field = fields[cleanLoc(location)];
     if (!field) {
       throw Error(`could not find field for ${JSON.stringify(location)} '${cleanLoc(location)}'`);
     }
     return field;
-
   };
+  const teamId = v => age + v.replaceAll(/\s+?/g, '').trim().toUpperCase();
 
   return schedule.map(v => {
 
-    const home = v['Home Team'].replaceAll(/\s+?/g, '').trim();
-    const away = v['Away Team'].replaceAll(/\s+?/g, '').trim();
+    const home = teamId(v['Home Team']);
+    const away = teamId(v['Away Team']);
     const isAway = !isCgfs(home);
 
     if (!isCgfs(away) && isAway) {
@@ -114,7 +114,7 @@ const parseSchedule = (sheet, age, fields) => {
     const end = new Date(v.DateTime.getTime() + 2 * 3600 * 1000);
     const loc = resolveLocation(v.Location || v['Field Name'] || v['Field']);
 
-    return ({
+    const val = ({
       Start_Date: date.format(v.DateTime, 'M/D/YY'),
       Start_Time: date.format(v.DateTime, 'H:mm'),
       End_Date: date.format(end, 'M/D/YY'),
@@ -122,16 +122,18 @@ const parseSchedule = (sheet, age, fields) => {
       Location: loc['Field Name'],
       Location_Details: loc['Field Address'],
       Event_Type: 'Game',
-      Team1_ID: `${age}${isAway ? away : home}`,
+      Team1_ID: isAway ? away : home,
       Team1_Is_Home: isAway ? 0 : 1,
       ...(isCgfs(home) && isCgfs(away) ? {
-        Team2_ID: `${age}${away}`
+        Team2_ID: isAway ? home : away
       } : {
-        Team2_ID: `${age}${away}`,
-        Team2_Name: away,
+        Team2_ID: isAway ? home : away,
+        Team2_Name: v[isAway ? 'Home Team' : 'Away Team'],
         Custom_Opponent: `TRUE`,
       })
     });
+    return val;
+
   }).filter(Boolean);
 };
 
